@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+captured_frame_*.jpg
+
+test.jpg
