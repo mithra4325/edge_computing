@@ -1,44 +1,105 @@
-# EDGE_COMPUTING
+# AegisEdge: Industrial Vision AI & Safety Compliance Dashboard
 
-A small Raspberry Pi camera check that searches for a working camera with
-OpenCV, captures one frame, and saves it as a JPEG.
+An industrial-grade Edge AI safety and quality inspection dashboard for **Raspberry Pi 5** and edge vision sensors (including **Arducam UC-844**), running real-time YOLOv8 PPE detection with live telemetry, sub-second latency analytics, adjustable thresholds, safety compliance validation (PASS/FAIL), and inspection audit history.
 
-## Hardware
+---
 
-- Host: Raspberry Pi 5
-- Camera: Arducam UC-844 (model name as supplied)
+## Key Features
 
-See [DEVICE_SPEC.md](DEVICE_SPEC.md) for the device profile and details that
-still need confirmation.
+- **Industrial Edge Architecture**:
+  - Optimized for **Raspberry Pi 5** host and **Arducam UC-844** camera sensor.
+  - Multi-threaded asynchronous video and inference pipeline with real-time FPS regulation.
+  - Dual stream modes: **Live Camera** (OpenCV V4L2/DSHOW) and **Simulated Factory Stream** (dynamic multi-station scenarios).
 
-## What it does
+- **Real-Time Live Dashboard**:
+  - Live video stream HUD with high-contrast tactical bounding boxes and status ribbons.
+  - Sub-millisecond latency tracking broken down by **Preprocess**, **Inference**, and **Postprocess** time.
+  - Dynamic FPS counter, frame drop detection, and session runtime clock.
 
-[`snapshot.py`](snapshot.py) tries camera indices 0 through 9 in order. For the
-first camera that opens and returns a frame, it writes
-`captured_frame_<index>.jpg` in the current working directory and exits. If no
-camera returns a frame, it reports an error.
+- **Dynamic Threshold & Pipeline Control**:
+  - Interactive **Confidence Threshold Slider** (10% to 95%).
+  - Interactive **IoU / NMS Threshold Slider** (20% to 80%).
+  - Multi-resolution inference selector (320x320 ultra-fast, 480x480 balanced, 640x640 high precision).
+  - Configurable Safety Inspection Policies:
+    - *Standard Policy*: Hardhat required (bare head detection triggers immediate **FAIL**).
+    - *Strict Policy*: Hardhat + protective gloves required.
 
-## Quick start
+- **Safety Compliance (PASS / FAIL) & Analytics**:
+  - Instant visual and acoustic alerting (industrial audio alarm synthesizer on safety violation).
+  - Yield statistics: Overall Pass Rate %, Total Passed, Total Failed.
+  - Real-time rolling latency line chart (Chart.js) and detection mix doughnut chart.
+  - Edge hardware telemetry: CPU load meter, RAM usage, and engine status.
 
-On Raspberry Pi OS, install the system OpenCV package:
+- **Inspection Audit History (10 to 20 Records)**:
+  - Rolling log of the last 20 inspection cycles with timestamps, detection breakdowns, confidence, latency, and status pills.
+  - Clickable snapshot thumbnails with zoom modal viewer and download option.
+  - Filter by *All*, *Pass Only*, or *Fail (Violations) Only*.
+  - **One-click CSV Audit Log Export**.
+
+- **Manual Snapshot & Image Inspection**:
+  - Snapshot button to save timestamped high-resolution evidence to `snapshots/`.
+  - Manual image uploader to test custom files against active model and thresholds.
+
+---
+
+## Hardware Profile
+
+| Component | Specification |
+|---|---|
+| Host Gateway | Raspberry Pi 5 (Quad-core Arm Cortex-A76 @ 2.4GHz) |
+| Camera Sensor | Arducam UC-844 (OpenCV VideoCapture backend) |
+| Inference Engine | YOLOv8 (`best.pt`) - Helmet, Gloves, Head |
+| Operating System | Raspberry Pi OS / Linux / Windows 11 |
+
+---
+
+## Quick Start
+
+### 1. Install Dependencies
 
 ```bash
-sudo apt update
-sudo apt install -y python3-opencv
+pip install -r requirements.txt
 ```
 
-Connect the camera, then run:
+### 2. Launch Dashboard Server
 
+On Windows:
+```cmd
+run_dashboard.bat
+```
+Or directly via Python:
 ```bash
-python3 snapshot.py
+python -m uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-Run the script from the directory where you want the captured image saved.
-More detailed setup, checks, and troubleshooting are in
-[SETUP_NOTES.md](SETUP_NOTES.md).
+On Raspberry Pi / Linux:
+```bash
+chmod +x run_dashboard.sh
+./run_dashboard.sh
+```
 
-## Notes
+### 3. Open in Browser
 
-- The script does not configure camera settings or stream video.
-- The camera must be available to OpenCV through a camera index.
-- Captured images are local output and are not required to run the project.
+Open your browser and navigate to:
+```
+http://localhost:8000
+```
+or access remotely over the local edge network:
+```
+http://<RASPBERRY_PI_IP>:8000
+```
+
+---
+
+## API Endpoints
+
+- `GET /api/video_feed`: Low-latency MJPEG video feed with industrial HUD annotations.
+- `WebSocket /ws/telemetry`: High-frequency real-time telemetry stream (latency, fps, counts, pass/fail, CPU, RAM).
+- `GET /api/telemetry`: Polling fallback for system telemetry.
+- `GET /api/history`: Retrieve the last 20 inspection events.
+- `POST /api/history/clear`: Reset history buffer and counters.
+- `GET /api/config`: Get current threshold, rule, and camera configurations.
+- `POST /api/config`: Dynamically update thresholds, rules, resolution, or sources.
+- `POST /api/snapshot`: Save and retrieve an annotated frame snapshot.
+- `POST /api/test_upload`: Upload and immediately inspect an image file.
+- `GET /api/system_info`: Edge host and hardware telemetry.

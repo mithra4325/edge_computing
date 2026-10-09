@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisEdge // Industrial Vision & Safety Compliance Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="/static/vendor/chart.min.js"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+</head>
+<body>
+
+  <!-- Top App Navigation Bar -->
+  <header class="header-bar">
+    <div class="brand-section">
+      <div class="brand-icon">
+        <i data-lucide="shield-alert"></i>
+      </div>
+      <div>
+        <div class="brand-title">
+          AEGIS-EDGE
+          <span style="font-size: 11px; background: rgba(0, 240, 255, 0.15); color: var(--accent-cyan); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.3);">v2.4 INDUSTRIAL</span>
+        </div>
+        <div class="brand-subtitle">EDGE AI VISION & SAFETY COMPLIANCE SYSTEM</div>
+      </div>
+    </div>
+
+    <!-- Edge Device Telemetry Badges -->
+    <div class="header-badges">
+      <div class="status-badge" id="edge-host-badge" title="Edge Computing Gateway">
+        <span class="status-dot online"></span>
+        <span>HOST: RASPBERRY PI 5</span>
+      </div>
+      <div class="status-badge" id="sensor-badge" title="Connected Vision Camera">
+        <span class="status-dot active"></span>
+        <span>SENSOR: ARDUCAM UC-844</span>
+      </div>
+      <div class="status-badge" id="model-badge" title="Active Model">
+        <i data-lucide="cpu" style="width: 12px; height: 12px; color: var(--accent-purple);"></i>
+        <span>YOLOV8 (best.pt)</span>
+      </div>
+      <div class="status-badge" id="uptime-badge" title="Session Uptime">
+        <i data-lucide="clock" style="width: 12px; height: 12px; color: var(--accent-cyan);"></i>
+        <span id="runtime-clock">00:00:00</span>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-controls">
+      <button class="btn" id="audio-toggle-btn" title="Toggle Audio Alarm on Safety Violation">
+        <i data-lucide="volume-2" id="audio-icon"></i>
+        <span id="audio-label">ALARM ON</span>
+      </button>
+      <button class="btn" id="manual-upload-btn" title="Inspect Custom Image File">
+        <i data-lucide="upload"></i>
+        <span>TEST IMAGE</span>
+      </button>
+      <input type="file" id="file-uploader" accept="image/*" style="display: none;">
+      <button class="btn btn-primary" id="snapshot-btn" title="Capture Annotated Snapshot">
+        <i data-lucide="camera"></i>
+        <span>SNAPSHOT</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Wrapper -->
+  <main class="dashboard-container">
+
+    <!-- KPI Metrics Banner Row -->
+    <section class="kpi-row">
+
+      <!-- Latency KPI -->
+      <div class="glass-panel kpi-card latency-kpi">
+        <div class="kpi-header">
+          <span class="kpi-label">LIVE LATENCY</span>
+          <i data-lucide="zap" class="kpi-icon" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-latency-val">0.0</span>
+          <span class="kpi-unit">ms</span>
+        </div>
+        <div class="kpi-subtext" id="kpi-latency-sub">
+          <span>Pre: 0.0ms</span> &bull; <span>Inf: 0.0ms</span> &bull; <span>Post: 0.0ms</span>
+        </div>
+      </div>
+
+      <!-- FPS & Pipeline KPI -->
+      <div class="glass-panel kpi-card fps-kpi">
+        <div class="kpi-header">
+          <span class="kpi-label">PROCESSING FPS</span>
+          <i data-lucide="activity" class="kpi-icon" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-fps-val">0.0</span>
+          <span class="kpi-unit">FPS</span>
+        </div>
+        <div class="kpi-subtext">
+          <span>Target: 30 FPS</span> &bull; <span id="kpi-frames-total">Frames: 0</span>
+        </div>
+      </div>
+
+      <!-- Pass / Fail Safety Compliance Status -->
+      <div class="glass-panel kpi-card pass-kpi" id="compliance-card">
+        <div class="kpi-header">
+          <span class="kpi-label">SAFETY STATUS</span>
+          <i data-lucide="shield-check" class="kpi-icon" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div style="margin: 4px 0;">
+          <span class="compliance-pill idle" id="compliance-pill">
+            <span class="status-dot active"></span>
+            <span id="compliance-status-text">INITIALIZING</span>
+          </span>
+        </div>
+        <div class="kpi-subtext" id="compliance-reason" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          Monitoring PPE safety rules
+        </div>
+      </div>
+
+      <!-- Pass & Fail Yield / Statistics -->
+      <div class="glass-panel kpi-card fail-kpi">
+        <div class="kpi-header">
+          <span class="kpi-label">INSPECTION YIELD</span>
+          <i data-lucide="check-circle-2" class="kpi-icon" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-pass-rate">100%</span>
+          <span class="kpi-unit">PASS</span>
+        </div>
+        <div class="kpi-subtext">
+          <span style="color: var(--accent-pass);">PASS: <b id="kpi-pass-count">0</b></span>
+          &bull;
+          <span style="color: var(--accent-fail);">FAIL: <b id="kpi-fail-count">0</b></span>
+        </div>
+      </div>
+
+      <!-- Counts (Detected) KPI -->
+      <div class="glass-panel kpi-card counts-kpi">
+        <div class="kpi-header">
+          <span class="kpi-label">COUNTS (DETECTED)</span>
+          <i data-lucide="layers" class="kpi-icon" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-current-total">0</span>
+          <span class="kpi-unit">IN FRAME</span>
+        </div>
+        <div class="kpi-subtext">
+          <span style="color: var(--accent-pass);">H: <b id="kpi-cnt-helmet">0</b></span> &bull;
+          <span style="color: var(--accent-cyan);">G: <b id="kpi-cnt-gloves">0</b></span> &bull;
+          <span style="color: var(--accent-fail);">HD: <b id="kpi-cnt-head">0</b></span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Main Workspace Grid: Viewport + Controls & Charts -->
+    <section class="main-grid">
+
+      <!-- Left: Live Video Feed and Controls -->
+      <div class="glass-panel video-section">
+        
+        <!-- Viewport Header -->
+        <div class="viewport-header">
+          <div class="viewport-title">
+            <span class="status-dot online"></span>
+            <span>LIVE EDGE INFERENCE FEED</span>
+            <span id="source-badge" class="hud-pill" style="margin-left: 8px;">LIVE CAMERA</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn" id="pause-stream-btn" style="padding: 4px 10px; font-size: 11px;">
+              <i data-lucide="pause" id="pause-icon" style="width: 13px; height: 13px;"></i>
+              <span id="pause-text">PAUSE</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Video Viewport Container -->
+        <div class="video-container">
+          <img id="live-video-feed" src="/api/video_feed" alt="Industrial Edge Video Stream" class="live-feed-img">
+          
+          <!-- Tactical HUD Elements -->
+          <div class="feed-hud-overlay">
+            <span class="hud-pill">FPS: <b id="hud-fps">0.0</b></span>
+            <span class="hud-pill">LATENCY: <b id="hud-latency">0.0 ms</b></span>
+            <span class="hud-pill">RESOLUTION: <b id="hud-res">640x480</b></span>
+          </div>
+        </div>
+
+        <!-- Viewport Controls Toolbar -->
+        <div class="viewport-toolbar">
+          
+          <div class="toolbar-group">
+            <span class="toolbar-label">SOURCE:</span>
+            <select id="source-select" class="custom-select">
+              <option value="webcam">Live Camera (Device 0)</option>
+              <option value="simulation">Factory Simulation Stream</option>
+            </select>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">SAFETY RULE:</span>
+            <select id="rule-select" class="custom-select">
+              <option value="standard">Standard: Hardhat Required</option>
+              <option value="strict">Strict: Hardhat + Gloves</option>
+            </select>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">INFERENCE SIZE:</span>
+            <select id="size-select" class="custom-select">
+              <option value="320">320x320 (Edge Fast)</option>
+              <option value="480">480x480 (Balanced)</option>
+              <option value="640">640x640 (High Detail)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Real-time Threshold Tuning Sliders -->
+        <div class="thresholds-panel">
+          
+          <div class="slider-block">
+            <div class="slider-label-row">
+              <span>CONFIDENCE THRESHOLD</span>
+              <span class="slider-val" id="conf-val-display">35% (0.35)</span>
+            </div>
+            <input type="range" id="conf-slider" class="custom-range" min="0.10" max="0.95" step="0.05" value="0.35">
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-label-row">
+              <span>IOU / NMS THRESHOLD</span>
+              <span class="slider-val" id="iou-val-display">45% (0.45)</span>
+            </div>
+            <input type="range" id="iou-slider" class="custom-range" min="0.20" max="0.80" step="0.05" value="0.45">
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right: Real-time Charts & Hardware Telemetry -->
+      <div class="sidebar-section">
+
+        <!-- Latency Trend Real-time Chart -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <span><i data-lucide="trending-up" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; color: var(--accent-cyan);"></i> LATENCY PROFILE (ms)</span>
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan);" id="chart-avg-lat">AVG: 0.0ms</span>
+          </div>
+          <div class="chart-box">
+            <canvas id="latencyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Detection Distribution Chart -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <span><i data-lucide="pie-chart" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; color: var(--accent-purple);"></i> DETECTIONS MIX</span>
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" id="chart-total-det">0 OBJ</span>
+          </div>
+          <div class="chart-box">
+            <canvas id="distributionChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Edge Device Spec & Hardware Telemetry -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <span><i data-lucide="server" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; color: var(--accent-pass);"></i> EDGE HARDWARE STATUS</span>
+            <span class="status-dot online"></span>
+          </div>
+          <div class="device-card-content">
+            <div class="spec-item">
+              <span class="spec-name">Host System</span>
+              <span class="spec-val">Raspberry Pi 5</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-name">Vision Sensor</span>
+              <span class="spec-val">Arducam UC-844</span>
+            </div>
+            
+            <!-- CPU Meter -->
+            <div class="meter-bar-container">
+              <div class="meter-header">
+                <span>CPU LOAD</span>
+                <span id="hw-cpu-val">0%</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" id="hw-cpu-bar" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- RAM Meter -->
+            <div class="meter-bar-container">
+              <div class="meter-header">
+                <span>MEMORY LOAD</span>
+                <span id="hw-ram-val">0%</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" id="hw-ram-bar" style="width: 0%; background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan));"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- Inspection History Section (Last 10 to 20 events) -->
+    <section class="glass-panel history-section">
+      
+      <div class="history-toolbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            <i data-lucide="history" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 6px; color: var(--accent-cyan);"></i>
+            INSPECTION AUDIT HISTORY (LAST 20)
+          </span>
+          <div class="history-filter-group">
+            <button class="filter-btn active" data-filter="all">ALL (<span id="filter-all-cnt">0</span>)</button>
+            <button class="filter-btn" data-filter="PASS">PASS (<span id="filter-pass-cnt">0</span>)</button>
+            <button class="filter-btn" data-filter="FAIL">FAIL (<span id="filter-fail-cnt">0</span>)</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn" id="export-csv-btn" title="Export History Log as CSV">
+            <i data-lucide="download" style="width: 13px; height: 13px;"></i>
+            <span>EXPORT CSV</span>
+          </button>
+          <button class="btn btn-danger" id="clear-history-btn" title="Clear History Buffer">
+            <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+            <span>CLEAR</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="history-table-container">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>EVENT ID</th>
+              <th>TIMESTAMP</th>
+              <th>SNAPSHOT</th>
+              <th>STATUS</th>
+              <th>DETECTIONS BREAKDOWN</th>
+              <th>CONFIDENCE</th>
+              <th>LATENCY</th>
+              <th>INSPECTION REMARKS</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <!-- Dynamically populated by dashboard.js -->
+            <tr>
+              <td colspan="9" style="text-align: center; color: var(--text-dim); padding: 24px;">
+                Waiting for inspection telemetry...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Snapshot Inspection Modal -->
+  <div class="modal-backdrop" id="snapshot-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i data-lucide="zoom-in" style="color: var(--accent-cyan);"></i>
+          <span style="font-weight: 700; font-size: 14px;" id="modal-title">INSPECTION EVENT SNAPSHOT</span>
+          <span id="modal-badge" class="badge-tag pass">PASS</span>
+        </div>
+        <button class="modal-close-btn" id="modal-close-x">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="modal-image" src="" alt="Snapshot Detail" class="modal-img">
+        <div style="width: 100%; display: flex; justify-content: space-between; font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);">
+          <span id="modal-details-time">TIME: --:--:--</span>
+          <span id="modal-details-counts">COUNTS: --</span>
+          <span id="modal-details-lat">LATENCY: -- ms</span>
+        </div>
+        <div style="display: flex; gap: 10px; width: 100%; justify-content: flex-end;">
+          <a id="modal-download-btn" href="#" download="edge_snapshot.jpg" class="btn btn-primary">
+            <i data-lucide="download"></i>
+            <span>DOWNLOAD IMAGE</span>
+          </a>
+          <button class="btn" id="modal-close-btn">CLOSE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
