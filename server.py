@@ -18,7 +18,7 @@ from pydantic import BaseModel
 import cv2
 import numpy as np
 
-from engine import EdgeVisionEngine
+from engine import EdgeVisionEngine, classify_hand_crop
 
 app = FastAPI(title="AegisEdge Industrial AI Vision System", version="2.4.0")
 
@@ -213,7 +213,7 @@ async def test_upload(file: UploadFile = File(...)):
 
     res = results[0]
     detections = []
-    counts = {"helmet": 0, "gloves": 0, "head": 0, "total": 0}
+    counts = {"helmet": 0, "gloves": 0, "bare_hand": 0, "head": 0, "total": 0}
     conf_sum = 0.0
 
     for box in res.boxes:
@@ -221,6 +221,14 @@ async def test_upload(file: UploadFile = File(...)):
         cls_name = engine.model.names.get(cls_id, f"class_{cls_id}")
         conf = float(box.conf)
         xyxy = [int(v) for v in box.xyxy[0].tolist()]
+
+        if cls_name == "gloves":
+            x1, y1 = max(0, xyxy[0]), max(0, xyxy[1])
+            x2, y2 = min(img.shape[1], xyxy[2]), min(img.shape[0], xyxy[3])
+            crop = img[y1:y2, x1:x2]
+            is_bare, skin_ratio, _ = classify_hand_crop(crop)
+            if is_bare:
+                cls_name = "bare_hand"
 
         detections.append({
             "class": cls_name,

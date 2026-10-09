@@ -19,14 +19,64 @@ from ultralytics import YOLO
 CLASS_COLORS = {
     "helmet": (70, 220, 50),     # Bright Emerald Green (BGR)
     "gloves": (255, 180, 0),     # Electric Cyan (BGR)
-    "head": (50, 40, 240)        # Bright Crimson Red / Violation (BGR)
+    "head": (50, 40, 240),       # Bright Crimson Red / Violation (BGR)
+    "bare_hand": (30, 100, 255)  # Amber-Red / Violation (BGR)
 }
 
 CLASS_HEX = {
     "helmet": "#32d74b",
     "gloves": "#0a84ff",
-    "head": "#ff453a"
+    "head": "#ff453a",
+    "bare_hand": "#ff9f0a"
 }
+
+
+def classify_hand_crop(crop, skin_threshold=0.32, laplacian_threshold=750.0):
+    """
+    Differentiates between a bare hand (without gloves) and a gloved hand (with gloves).
+    Uses multi-spectrum skin colorimetry (YCrCb + HSV + RGB) combined with
+    surface texture analysis (Laplacian edge variance).
+    """
+    if crop is None or crop.size == 0:
+        return False, 0.0, 0.0
+
+    h, w = crop.shape[:2]
+    pad_y = max(1, int(h * 0.1))
+    pad_x = max(1, int(w * 0.1))
+    inner = crop[pad_y:h - pad_y, pad_x:w - pad_x] if (h > 20 and w > 20) else crop
+
+    # 1. Multi-Space Skin Color Analysis
+    ycrcb = cv2.cvtColor(inner, cv2.COLOR_BGR2YCrCb)
+    hsv = cv2.cvtColor(inner, cv2.COLOR_BGR2HSV)
+
+    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 133, 77], dtype=np.uint8), np.array([255, 175, 127], dtype=np.uint8))
+    mask_hsv1 = cv2.inRange(hsv, np.array([0, 25, 40], dtype=np.uint8), np.array([25, 240, 255], dtype=np.uint8))
+    mask_hsv2 = cv2.inRange(hsv, np.array([165, 25, 40], dtype=np.uint8), np.array([180, 240, 255], dtype=np.uint8))
+    mask_hsv = cv2.bitwise_or(mask_hsv1, mask_hsv2)
+
+    b, g, r = cv2.split(inner)
+    mask_rgb = (r > g) & (g > b) & ((r - g) > 8)
+
+    skin_mask = cv2.bitwise_and(mask_ycrcb, mask_hsv)
+    skin_mask = cv2.bitwise_and(skin_mask, skin_mask, mask=mask_rgb.astype(np.uint8) * 255)
+
+    skin_pixels = cv2.countNonZero(skin_mask)
+    total_pixels = inner.shape[0] * inner.shape[1]
+    skin_ratio = skin_pixels / total_pixels if total_pixels > 0 else 0.0
+
+    # 2. Surface Texture / Edge Variance
+    gray = cv2.cvtColor(inner, cv2.COLOR_BGR2GRAY)
+    texture_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+
+    # 3. Decision Boundary
+    if skin_ratio >= 0.50:
+        is_bare = True
+    elif skin_ratio >= skin_threshold and texture_var < laplacian_threshold:
+        is_bare = True
+    else:
+        is_bare = False
+
+    return is_bare, skin_ratio, texture_var
 
 
 class EdgeVisionEngine:
@@ -73,8 +123,8 @@ class EdgeVisionEngine:
         self.min_latency_ms = 9999.0
 
         # Live Counts & Compliance
-        self.current_counts = {"helmet": 0, "gloves": 0, "head": 0, "total": 0}
-        self.cumulative_counts = {"helmet": 0, "gloves": 0, "head": 0, "total": 0}
+        self.current_counts = {"helmet": 0, "gloves": 0, "bare_hand": 0, "head": 0, "total": 0}
+        self.cumulative_counts = {"helmet": 0, "gloves": 0, "bare_hand": 0, "head": 0, "total": 0}
         self.compliance_status = "IDLE"  # "PASS", "FAIL", "IDLE"
         self.compliance_reason = "System online. Initializing monitoring feed..."
         self.total_inspections = 0
@@ -255,7 +305,7 @@ class EdgeVisionEngine:
 
             # Parse detections
             detections = []
-            frame_counts = {"helmet": 0, "gloves": 0, "head": 0, "total": 0}
+            frame_counts = {"helmet": 0, "gloves": 0, "bare_hand": 0, "head": 0, "total": 0}
             conf_sum = 0.0
 
             for box in res.boxes:
@@ -264,9 +314,21 @@ class EdgeVisionEngine:
                 conf = float(box.conf)
                 xyxy = [int(v) for v in box.xyxy[0].tolist()]
 
+                # Differentiate between bare hand vs glove if classified as gloves
+                skin_pct = 0.0
+                if cls_name == "gloves":
+                    x1, y1 = max(0, xyxy[0]), max(0, xyxy[1])
+                    x2, y2 = min(frame.shape[1], xyxy[2]), min(frame.shape[0], xyxy[3])
+                    crop = frame[y1:y2, x1:x2]
+                    is_bare, skin_ratio, _ = classify_hand_crop(crop)
+                    skin_pct = round(skin_ratio * 100, 1)
+                    if is_bare:
+                        cls_name = "bare_hand"
+
                 detections.append({
                     "class": cls_name,
                     "confidence": round(conf, 3),
+                    "skin_ratio": skin_pct,
                     "bbox": xyxy
                 })
                 if cls_name in frame_counts:
@@ -291,7 +353,7 @@ class EdgeVisionEngine:
                 self.current_counts = frame_counts
 
                 # Update cumulative counts
-                for k in ["helmet", "gloves", "head", "total"]:
+                for k in ["helmet", "gloves", "bare_hand", "head", "total"]:
                     self.cumulative_counts[k] += frame_counts[k]
 
                 # Latency & Stats
@@ -339,15 +401,21 @@ class EdgeVisionEngine:
         """
         helmets = counts.get("helmet", 0)
         gloves = counts.get("gloves", 0)
+        bare_hands = counts.get("bare_hand", 0)
         heads = counts.get("head", 0)
 
-        if helmets == 0 and heads == 0 and gloves == 0:
+        if helmets == 0 and heads == 0 and gloves == 0 and bare_hands == 0:
             return "IDLE", "Inspection Zone Clear / No Personnel Detected"
 
-        # Rule Mode A: Standard (Mandatory Helmet)
+        # Rule Mode A: Standard (Mandatory Helmet, Alert on Bare Hands)
         if self.rule_mode == "standard":
+            violations = []
             if heads > 0:
-                return "FAIL", f"VIOLATION: {heads} Unprotected Head(s) Detected (Missing Helmet)"
+                violations.append(f"{heads} Missing Helmet(s)")
+            if bare_hands > 0:
+                violations.append(f"{bare_hands} Bare Hand(s) Detected (No Gloves)")
+            if violations:
+                return "FAIL", f"VIOLATION: {', '.join(violations)}"
             elif helmets > 0:
                 return "PASS", f"COMPLIANT: {helmets} Safety Hardhat(s) Verified"
             else:
@@ -358,7 +426,9 @@ class EdgeVisionEngine:
             violations = []
             if heads > 0:
                 violations.append(f"{heads} Missing Helmet(s)")
-            if helmets > 0 and gloves == 0:
+            if bare_hands > 0:
+                violations.append(f"{bare_hands} Bare Hand(s) (Gloves Required)")
+            if helmets > 0 and gloves == 0 and bare_hands == 0:
                 violations.append("Missing Safety Gloves")
             if violations:
                 return "FAIL", f"VIOLATION: {', '.join(violations)}"
@@ -405,12 +475,14 @@ class EdgeVisionEngine:
             label_text = f"{cls_name.upper()} {int(conf * 100)}%"
             if cls_name == "head":
                 label_text = f"! NO HELMET {int(conf * 100)}%"
+            elif cls_name == "bare_hand":
+                label_text = f"! NO GLOVE (BARE HAND) {int(conf * 100)}%"
 
             (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
             # Badge background
             cv2.rectangle(frame, (x1, max(0, y1 - 20)), (x1 + tw + 10, max(20, y1)), color, -1)
             # Badge text
-            text_color = (0, 0, 0) if cls_name != "head" else (255, 255, 255)
+            text_color = (0, 0, 0) if cls_name not in ["head", "bare_hand"] else (255, 255, 255)
             cv2.putText(frame, label_text, (x1 + 5, max(14, y1 - 5)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, text_color, 1, cv2.LINE_AA)
 
@@ -551,7 +623,7 @@ class EdgeVisionEngine:
             self.pass_count = 0
             self.fail_count = 0
             self.total_inspections = 0
-            self.cumulative_counts = {"helmet": 0, "gloves": 0, "head": 0, "total": 0}
+            self.cumulative_counts = {"helmet": 0, "gloves": 0, "bare_hand": 0, "head": 0, "total": 0}
 
     def get_jpeg_frame(self, raw: bool = False) -> Optional[bytes]:
         """Encode the latest frame as JPEG bytes for HTTP MJPEG stream."""

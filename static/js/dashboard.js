@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTotal: document.getElementById('kpi-current-total'),
     cntHelmet: document.getElementById('kpi-cnt-helmet'),
     cntGloves: document.getElementById('kpi-cnt-gloves'),
+    cntBareHand: document.getElementById('kpi-cnt-bare-hand'),
     cntHead: document.getElementById('kpi-cnt-head'),
     hudFps: document.getElementById('hud-fps'),
     hudLatency: document.getElementById('hud-latency'),
@@ -170,10 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
     distributionChart = new Chart(distCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Helmet', 'Gloves', 'Bare Head'],
+        labels: ['Helmet', 'Gloves', 'Bare Hand', 'Bare Head'],
         datasets: [{
-          data: [1, 1, 1],
-          backgroundColor: ['#32d74b', '#00b0ff', '#ff1744'],
+          data: [1, 1, 1, 1],
+          backgroundColor: ['#32d74b', '#00b0ff', '#ff9f0a', '#ff1744'],
           borderColor: 'transparent',
           borderWidth: 2
         }]
@@ -253,18 +254,20 @@ document.addEventListener('DOMContentLoaded', () => {
       el.currentTotal.textContent = cur.total || 0;
       el.cntHelmet.textContent = cur.helmet || 0;
       el.cntGloves.textContent = cur.gloves || 0;
+      if (el.cntBareHand) el.cntBareHand.textContent = cur.bare_hand || 0;
       el.cntHead.textContent = cur.head || 0;
 
       // Update Distribution Chart
       if (distributionChart) {
         const h = cum.helmet || 0;
         const g = cum.gloves || 0;
+        const bh = cum.bare_hand || 0;
         const hd = cum.head || 0;
-        const totalCum = h + g + hd;
+        const totalCum = h + g + bh + hd;
         el.chartTotalDet.textContent = `${totalCum} DETECTIONS`;
 
         if (totalCum > 0) {
-          distributionChart.data.datasets[0].data = [h, g, hd];
+          distributionChart.data.datasets[0].data = [h, g, bh, hd];
           distributionChart.update();
         }
       }
@@ -378,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.historyTableBody.innerHTML = filtered.map(item => {
       const verdictClass = item.verdict.toLowerCase();
-      const countsStr = `Helmet: ${item.counts?.helmet || 0} | Gloves: ${item.counts?.gloves || 0} | Head: ${item.counts?.head || 0}`;
+      const countsStr = `H: ${item.counts?.helmet || 0} | G: ${item.counts?.gloves || 0} | BH: ${item.counts?.bare_hand || 0} | HD: ${item.counts?.head || 0}`;
 
       return `
         <tr>
@@ -418,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.modalBadge.className = `badge-tag ${item.verdict.toLowerCase()}`;
     el.modalImage.src = item.thumbnail;
     el.modalDetailsTime.textContent = `TIMESTAMP: ${item.full_timestamp || item.timestamp}`;
-    el.modalDetailsCounts.textContent = `COUNTS: H:${item.counts?.helmet||0} G:${item.counts?.gloves||0} HD:${item.counts?.head||0}`;
+    el.modalDetailsCounts.textContent = `COUNTS: H:${item.counts?.helmet||0} G:${item.counts?.gloves||0} BH:${item.counts?.bare_hand||0} HD:${item.counts?.head||0}`;
     el.modalDetailsLat.textContent = `LATENCY: ${item.latency_ms} ms | CONF: ${item.confidence}%`;
     el.modalDownloadBtn.href = item.thumbnail;
     el.modalDownloadBtn.download = `${item.id}_snapshot.jpg`;
@@ -596,13 +599,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const headers = ['Event ID', 'Timestamp', 'Verdict', 'Helmets', 'Gloves', 'Bare Heads', 'Confidence (%)', 'Latency (ms)', 'Remarks'];
+    const headers = ['Event ID', 'Timestamp', 'Verdict', 'Helmets', 'Gloves', 'Bare Hands', 'Bare Heads', 'Confidence (%)', 'Latency (ms)', 'Remarks'];
     const rows = state.historyItems.map(i => [
       i.id,
       i.full_timestamp || i.timestamp,
       i.verdict,
       i.counts?.helmet || 0,
       i.counts?.gloves || 0,
+      i.counts?.bare_hand || 0,
       i.counts?.head || 0,
       i.confidence,
       i.latency_ms,
