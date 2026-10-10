@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
+from gpio_manager import gpio_controller
 
 # Configuration
 MODEL_PATH = "best.pt"
@@ -205,6 +206,11 @@ def main():
             elapsed = time.time() - start_time
             fps = frame_count / elapsed if elapsed > 0 else 0
 
+            # Update Raspberry Pi 5 3-LED hardware and virtual controller
+            has_helmet = (counts["helmet"] > 0)
+            has_gloves = (counts["gloves"] > 0)
+            led_state = gpio_controller.update(has_helmet, has_gloves)
+
             # Determine Overall Safety Status
             violations = []
             if counts["head"] > 0:
@@ -245,15 +251,38 @@ def main():
                 cv2.LINE_AA
             )
 
+            # Render 3 Physical LED Tower Indicators in HUD (Upper Right)
+            # Yellow: Pin 11 (Gloves Only)
+            y_on = led_state["yellow"]["active"]
+            y_col = (0, 214, 255) if y_on else (25, 55, 65)
+            cv2.circle(annotated_frame, (w - 180, 18), 6, y_col, -1)
+            if y_on: cv2.circle(annotated_frame, (w - 180, 18), 8, (0, 214, 255), 1)
+            cv2.putText(annotated_frame, "Y:P11", (w - 170, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.35, y_col, 1)
+
+            # Green: Pin 13 (Helmet Only)
+            g_on = led_state["green"]["active"]
+            g_col = (60, 225, 60) if g_on else (20, 60, 30)
+            cv2.circle(annotated_frame, (w - 125, 18), 6, g_col, -1)
+            if g_on: cv2.circle(annotated_frame, (w - 125, 18), 8, (60, 225, 60), 1)
+            cv2.putText(annotated_frame, "G:P13", (w - 115, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.35, g_col, 1)
+
+            # Red: Pin 15 (Both Helmet & Gloves)
+            r_on = led_state["red"]["active"]
+            r_col = (60, 60, 245) if r_on else (30, 30, 75)
+            cv2.circle(annotated_frame, (w - 70, 18), 6, r_col, -1)
+            if r_on: cv2.circle(annotated_frame, (w - 70, 18), 8, (60, 60, 245), 1)
+            cv2.putText(annotated_frame, "R:P15", (w - 60, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.35, r_col, 1)
+
             # Bottom Stats Bar
             cv2.rectangle(annotated_frame, (0, h - 26), (w, h), (20, 20, 20), -1)
-            hud_bot = f"Helmets: {counts['helmet']} | Gloved Hands: {counts['gloves']} | Bare Hands: {counts['bare_hand']} | Bare Heads: {counts['head']}"
+            led_msg = f"LED: {led_state['active_condition']}"
+            hud_bot = f"Helmets: {counts['helmet']} | Gloves: {counts['gloves']} | Bare Hands: {counts['bare_hand']} | {led_msg}"
             cv2.putText(
                 annotated_frame,
                 hud_bot,
                 (12, h - 8),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.42,
+                0.40,
                 (200, 220, 240),
                 1,
                 cv2.LINE_AA
@@ -271,7 +300,8 @@ def main():
     finally:
         camera.release()
         cv2.destroyAllWindows()
-        print("Camera released. Program ended.")
+        gpio_controller.cleanup()
+        print("Camera released and GPIO pins reset. Program ended.")
 
 if __name__ == "__main__":
     main()

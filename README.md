@@ -36,6 +36,15 @@ An industrial-grade Edge AI safety and quality inspection dashboard for **Raspbe
   - Filter by *All*, *Pass Only*, or *Fail (Violations) Only*.
   - **One-click CSV Audit Log Export**.
 
+- **Raspberry Pi 5 Hardware 3-LED Stack Light Control**:
+  - Live hardware GPIO switching via `gpiozero` & `lgpio` on Raspberry Pi 5 RP1 chip:
+    - **Yellow LED ON** (Pin 11 / GPIO 17): Gloves only identified.
+    - **Green LED ON** (Pin 13 / GPIO 27): Helmet only identified.
+    - **Red LED ON** (Pin 15 / GPIO 22): Both helmet and gloves identified.
+    - **Common Ground** (Pin 14 / GND via 220&Omega; current-limiting resistor).
+  - Synchronized live visual indicators displayed directly in the web dashboard and on the video HUD.
+  - Automatic simulated fallback for smooth cross-platform testing on non-Pi systems.
+
 - **Manual Snapshot & Image Inspection**:
   - Snapshot button to save timestamped high-resolution evidence to `snapshots/`.
   - Manual image uploader to test custom files against active model and thresholds.

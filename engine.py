@@ -14,6 +14,7 @@ import threading
 from collections import deque
 from typing import Dict, Any, List, Optional
 from ultralytics import YOLO
+from gpio_manager import gpio_controller
 
 # Class ID mapping in best.pt: 0: 'gloves', 1: 'head', 2: 'helmet'
 CLASS_COLORS = {
@@ -186,7 +187,8 @@ class EdgeVisionEngine:
         if self.camera is not None:
             self.camera.release()
             self.camera = None
-        print("[Engine] Pipeline stopped and camera released.")
+        gpio_controller.cleanup()
+        print("[Engine] Pipeline stopped and camera/GPIO released.")
 
     def _init_source(self):
         """Initialize the selected video source."""
@@ -341,8 +343,13 @@ class EdgeVisionEngine:
             # Evaluate Compliance (Pass / Fail Logic)
             status, reason = self._evaluate_compliance(frame_counts)
 
+            # Update Raspberry Pi 5 3-LED hardware and virtual controller
+            has_helmet = (frame_counts.get("helmet", 0) > 0)
+            has_gloves = (frame_counts.get("gloves", 0) > 0)
+            gpio_state = gpio_controller.update(has_helmet, has_gloves)
+
             # Draw High-Tech Industrial Annotation Overlay
-            annotated = self._render_industrial_hud(frame.copy(), detections, status, total_lat)
+            annotated = self._render_industrial_hud(frame.copy(), detections, status, total_lat, gpio_state)
 
             # Update State with thread safety
             now = time.time()
@@ -440,7 +447,7 @@ class EdgeVisionEngine:
         return "IDLE", "Monitoring"
 
     def _render_industrial_hud(self, frame: np.ndarray, detections: List[Dict[str, Any]],
-                               status: str, latency: float) -> np.ndarray:
+                               status: str, latency: float, gpio_state: Optional[Dict[str, Any]] = None) -> np.ndarray:
         """
         Render ultra-crisp, professional industrial HUD overlay onto the frame.
         """
@@ -463,7 +470,7 @@ class EdgeVisionEngine:
             cv2.line(frame, (x1, y1), (x1, y1 + line_len), color, 3)
             # Top-Right
             cv2.line(frame, (x2, y1), (x2 - line_len, y1), color, 3)
-            cv2.line(frame, (x2, y1), (x2, y1 + line_len), color, 3)
+            cv2.line(frame, (x2, y1), (x2 - line_len, y1), color, 3)
             # Bottom-Left
             cv2.line(frame, (x1, y2), (x1 + line_len, y2), color, 3)
             cv2.line(frame, (x1, y2), (x1, y2 - line_len), color, 3)
@@ -509,13 +516,34 @@ class EdgeVisionEngine:
         cv2.putText(frame, f"LATENCY: {latency:.1f}ms", (w - 145, 23),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 230, 255), 1, cv2.LINE_AA)
 
+        # Draw Raspberry Pi 5 3-LED Stack Light Indicator in HUD (Upper Right overlay)
+        if gpio_state is not None:
+            # Yellow (Gloves Only - Pin 11)
+            y_on = gpio_state.get("yellow", {}).get("active", False)
+            y_col = (0, 214, 255) if y_on else (25, 55, 65)
+            cv2.circle(frame, (w - 240, 18), 6, y_col, -1)
+            if y_on: cv2.circle(frame, (w - 240, 18), 8, (0, 214, 255), 1)
+
+            # Green (Helmet Only - Pin 13)
+            g_on = gpio_state.get("green", {}).get("active", False)
+            g_col = (60, 225, 60) if g_on else (20, 60, 30)
+            cv2.circle(frame, (w - 222, 18), 6, g_col, -1)
+            if g_on: cv2.circle(frame, (w - 222, 18), 8, (60, 225, 60), 1)
+
+            # Red (Both Helmet & Gloves - Pin 15)
+            r_on = gpio_state.get("red", {}).get("active", False)
+            r_col = (60, 60, 245) if r_on else (30, 30, 75)
+            cv2.circle(frame, (w - 204, 18), 6, r_col, -1)
+            if r_on: cv2.circle(frame, (w - 204, 18), 8, (60, 60, 245), 1)
+
         # Bottom HUD stats bar
         overlay_bot = frame.copy()
         cv2.rectangle(overlay_bot, (0, h - 26), (w, h), (10, 15, 22), -1)
         cv2.addWeighted(overlay_bot, 0.78, frame, 0.22, 0, frame)
 
         src_label = "SRC: LIVE CAMERA" if self.source_mode == "webcam" else "SRC: SIMULATED FACTORY"
-        hud_bot = f"{src_label} | FPS: {self.fps:.1f} | CONF: {int(self.confidence_threshold*100)}% | DETECTIONS: {len(detections)}"
+        led_info = f"LED: {gpio_state.get('active_condition', 'OFF')}" if gpio_state else "LED: OFF"
+        hud_bot = f"{src_label} | FPS: {self.fps:.1f} | {led_info} | CONF: {int(self.confidence_threshold*100)}% | DET: {len(detections)}"
         cv2.putText(frame, hud_bot, (12, h - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.40, (180, 200, 215), 1, cv2.LINE_AA)
 
@@ -608,7 +636,8 @@ class EdgeVisionEngine:
                     "fail_count": self.fail_count,
                     "pass_rate_percent": pass_rate
                 },
-                "detections": self.latest_detections
+                "detections": self.latest_detections,
+                "gpio": gpio_controller.get_state()
             }
 
     def get_history(self, limit: int = 20) -> List[Dict[str, Any]]:

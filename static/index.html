@@ -70,7 +70,7 @@
   <main class="dashboard-container">
 
     <!-- KPI Metrics Banner Row -->
-    <section class="kpi-row">
+    <section class="kpi-row-6">
 
       <!-- Latency KPI -->
       <div class="glass-panel kpi-card latency-kpi">
@@ -151,6 +151,22 @@
           <span style="color: var(--accent-cyan);" title="Gloved Hands (Compliant)">G: <b id="kpi-cnt-gloves">0</b></span> &bull;
           <span style="color: var(--accent-warn);" title="Bare Hands (No Gloves)">BH: <b id="kpi-cnt-bare-hand">0</b></span> &bull;
           <span style="color: var(--accent-fail);" title="Bare Heads (No Helmet)">HD: <b id="kpi-cnt-head">0</b></span>
+        </div>
+      </div>
+
+      <!-- Raspberry Pi 5 3-LED Stack Tower KPI -->
+      <div class="glass-panel kpi-card gpio-kpi" id="gpio-kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">PI 5 LED LIGHTS</span>
+          <i data-lucide="radio" class="kpi-icon" style="width: 16px; height: 16px; color: #ffd600;"></i>
+        </div>
+        <div class="led-tower-mini">
+          <div class="mini-lamp yellow" id="kpi-lamp-yellow" title="Yellow LED: GPIO 17 (Pin 11) - Gloves Only">Y</div>
+          <div class="mini-lamp green" id="kpi-lamp-green" title="Green LED: GPIO 27 (Pin 13) - Helmet Only">G</div>
+          <div class="mini-lamp red" id="kpi-lamp-red" title="Red LED: GPIO 22 (Pin 15) - Both Helmet & Gloves">R</div>
+        </div>
+        <div class="kpi-subtext" id="kpi-gpio-desc" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          <span id="kpi-gpio-state-text" style="color: var(--text-muted);">ALL LEDS OFF</span>
         </div>
       </div>
 
@@ -305,6 +321,72 @@
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <!-- Raspberry Pi 5 3-LED Stack Lights & Pinout Spec -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <span><i data-lucide="cpu" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; color: #ffd600;"></i> PI 5 STACK LIGHTS</span>
+            <span class="badge-tag" id="gpio-mode-pill" style="font-size: 10px;">GPIO READY</span>
+          </div>
+          <div class="gpio-panel-body">
+            <!-- Large Lamp Display -->
+            <div class="gpio-tower-large">
+              <div class="lamp-unit">
+                <div class="lamp-bulb yellow" id="panel-lamp-yellow" title="Gloves Only">Y</div>
+                <span class="lamp-name">GLOVES</span>
+                <span class="lamp-pin">PIN 11 (GPIO17)</span>
+              </div>
+              <div class="lamp-unit">
+                <div class="lamp-bulb green" id="panel-lamp-green" title="Helmet Only">G</div>
+                <span class="lamp-name">HELMET</span>
+                <span class="lamp-pin">PIN 13 (GPIO27)</span>
+              </div>
+              <div class="lamp-unit">
+                <div class="lamp-bulb red" id="panel-lamp-red" title="Both Helmet & Gloves">R</div>
+                <span class="lamp-name">BOTH PPE</span>
+                <span class="lamp-pin">PIN 15 (GPIO22)</span>
+              </div>
+            </div>
+
+            <!-- Pinout & Connection Table -->
+            <table class="gpio-pinout-table">
+              <thead>
+                <tr>
+                  <th>LIGHT</th>
+                  <th>PIN</th>
+                  <th>BCM</th>
+                  <th>TRIGGER CONDITION</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="pin-badge yellow">YELLOW</span></td>
+                  <td><b>PIN 11</b></td>
+                  <td>GPIO 17</td>
+                  <td>Gloves Only Identified</td>
+                </tr>
+                <tr>
+                  <td><span class="pin-badge green">GREEN</span></td>
+                  <td><b>PIN 13</b></td>
+                  <td>GPIO 27</td>
+                  <td>Helmet Only Identified</td>
+                </tr>
+                <tr>
+                  <td><span class="pin-badge red">RED</span></td>
+                  <td><b>PIN 15</b></td>
+                  <td>GPIO 22</td>
+                  <td>Both Helmet &amp; Gloves</td>
+                </tr>
+                <tr>
+                  <td><span class="pin-badge gnd">GND</span></td>
+                  <td><b>PIN 14</b></td>
+                  <td>Ground</td>
+                  <td>Common Cathode Rail (220&Omega;)</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

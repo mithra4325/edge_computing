@@ -81,7 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
     modalDetailsLat: document.getElementById('modal-details-lat'),
     modalDownloadBtn: document.getElementById('modal-download-btn'),
     modalCloseX: document.getElementById('modal-close-x'),
-    modalCloseBtn: document.getElementById('modal-close-btn')
+    modalCloseBtn: document.getElementById('modal-close-btn'),
+    // Raspberry Pi 5 GPIO Indicators
+    kpiLampYellow: document.getElementById('kpi-lamp-yellow'),
+    kpiLampGreen: document.getElementById('kpi-lamp-green'),
+    kpiLampRed: document.getElementById('kpi-lamp-red'),
+    kpiGpioStateText: document.getElementById('kpi-gpio-state-text'),
+    gpioModePill: document.getElementById('gpio-mode-pill'),
+    panelLampYellow: document.getElementById('panel-lamp-yellow'),
+    panelLampGreen: document.getElementById('panel-lamp-green'),
+    panelLampRed: document.getElementById('panel-lamp-red')
   };
 
   // Audio Alarm Synthesizer (Web Audio API)
@@ -299,6 +308,44 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (data.thresholds.rule_mode) {
         el.ruleSelect.value = data.thresholds.rule_mode;
+      }
+    }
+
+    // Raspberry Pi 5 GPIO Stack Lights Telemetry
+    if (data.gpio) {
+      const g = data.gpio;
+      const isYellow = !!(g.yellow && g.yellow.active);
+      const isGreen = !!(g.green && g.green.active);
+      const isRed = !!(g.red && g.red.active);
+
+      // Mini lamps in KPI row
+      if (el.kpiLampYellow) el.kpiLampYellow.classList.toggle('active', isYellow);
+      if (el.kpiLampGreen) el.kpiLampGreen.classList.toggle('active', isGreen);
+      if (el.kpiLampRed) el.kpiLampRed.classList.toggle('active', isRed);
+
+      // Large lamps in Sidebar Panel
+      if (el.panelLampYellow) el.panelLampYellow.classList.toggle('active', isYellow);
+      if (el.panelLampGreen) el.panelLampGreen.classList.toggle('active', isGreen);
+      if (el.panelLampRed) el.panelLampRed.classList.toggle('active', isRed);
+
+      // Status text
+      if (el.kpiGpioStateText) {
+        el.kpiGpioStateText.textContent = g.active_label || 'ALL LEDS OFF';
+        if (isRed) {
+          el.kpiGpioStateText.style.color = '#ff1744';
+        } else if (isGreen) {
+          el.kpiGpioStateText.style.color = '#00e676';
+        } else if (isYellow) {
+          el.kpiGpioStateText.style.color = '#ffd600';
+        } else {
+          el.kpiGpioStateText.style.color = 'var(--text-muted)';
+        }
+      }
+
+      // Mode pill badge
+      if (el.gpioModePill) {
+        el.gpioModePill.textContent = g.is_hardware ? 'PI 5 HARDWARE' : 'SIMULATED GPIO';
+        el.gpioModePill.className = g.is_hardware ? 'badge-tag pass' : 'badge-tag clear';
       }
     }
   }

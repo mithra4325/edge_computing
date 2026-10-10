@@ -794,3 +794,209 @@ body {
   font-size: 20px;
   cursor: pointer;
 }
+
+/* ========================================================
+   Raspberry Pi 5 3-LED Stack Tower & GPIO Styles
+   ======================================================== */
+.kpi-row-6 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1550px) {
+  .kpi-row-6 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 950px) {
+  .kpi-row-6 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 650px) {
+  .kpi-row-6 { grid-template-columns: 1fr; }
+}
+
+.kpi-card.gpio-kpi::after {
+  background: linear-gradient(180deg, #ffd600, #00e676, #ff1744);
+}
+
+.led-tower-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.mini-lamp {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(20, 26, 38, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Yellow Lamp (Gloves Only) */
+.mini-lamp.yellow.active {
+  background: radial-gradient(circle at 35% 35%, #fff9c4, #ffd600, #ff8f00);
+  border-color: #ffd600;
+  color: #000;
+  box-shadow: 0 0 14px #ffd600, 0 0 28px rgba(255, 214, 0, 0.7);
+  animation: pulse-yellow-glow 1.5s infinite;
+}
+
+/* Green Lamp (Helmet Only) */
+.mini-lamp.green.active {
+  background: radial-gradient(circle at 35% 35%, #e8f5e9, #00e676, #00a152);
+  border-color: #00e676;
+  color: #000;
+  box-shadow: 0 0 14px #00e676, 0 0 28px rgba(0, 230, 118, 0.7);
+  animation: pulse-green-glow 1.5s infinite;
+}
+
+/* Red Lamp (Both Helmet & Gloves) */
+.mini-lamp.red.active {
+  background: radial-gradient(circle at 35% 35%, #ffebee, #ff1744, #b71c1c);
+  border-color: #ff1744;
+  color: #fff;
+  box-shadow: 0 0 16px #ff1744, 0 0 32px rgba(255, 23, 68, 0.8);
+  animation: pulse-red-glow 1.2s infinite;
+}
+
+@keyframes pulse-yellow-glow {
+  0% { transform: scale(0.96); box-shadow: 0 0 10px #ffd600; }
+  50% { transform: scale(1.12); box-shadow: 0 0 22px #ffd600, 0 0 35px rgba(255, 214, 0, 0.8); }
+  100% { transform: scale(0.96); box-shadow: 0 0 10px #ffd600; }
+}
+
+@keyframes pulse-green-glow {
+  0% { transform: scale(0.96); box-shadow: 0 0 10px #00e676; }
+  50% { transform: scale(1.12); box-shadow: 0 0 22px #00e676, 0 0 35px rgba(0, 230, 118, 0.8); }
+  100% { transform: scale(0.96); box-shadow: 0 0 10px #00e676; }
+}
+
+@keyframes pulse-red-glow {
+  0% { transform: scale(0.96); box-shadow: 0 0 12px #ff1744; }
+  50% { transform: scale(1.15); box-shadow: 0 0 26px #ff1744, 0 0 40px rgba(255, 23, 68, 0.9); }
+  100% { transform: scale(0.96); box-shadow: 0 0 12px #ff1744; }
+}
+
+/* Dedicated GPIO Hardware Panel in Sidebar */
+.gpio-panel-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gpio-tower-large {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px;
+  background: rgba(10, 14, 22, 0.8);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.lamp-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lamp-bulb {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(16, 22, 33, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+.lamp-bulb.yellow.active {
+  background: radial-gradient(circle at 35% 35%, #fffde7, #ffd600, #ff8f00);
+  border-color: #ffd600;
+  color: #000;
+  box-shadow: 0 0 20px #ffd600, 0 0 35px rgba(255, 214, 0, 0.8);
+}
+
+.lamp-bulb.green.active {
+  background: radial-gradient(circle at 35% 35%, #e8f5e9, #00e676, #00a152);
+  border-color: #00e676;
+  color: #000;
+  box-shadow: 0 0 20px #00e676, 0 0 35px rgba(0, 230, 118, 0.8);
+}
+
+.lamp-bulb.red.active {
+  background: radial-gradient(circle at 35% 35%, #ffebee, #ff1744, #b71c1c);
+  border-color: #ff1744;
+  color: #fff;
+  box-shadow: 0 0 22px #ff1744, 0 0 40px rgba(255, 23, 68, 0.9);
+}
+
+.lamp-name {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lamp-pin {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+}
+
+.gpio-pinout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.gpio-pinout-table th {
+  padding: 6px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(10, 14, 22, 0.5);
+  text-align: left;
+}
+
+.gpio-pinout-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pin-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.pin-badge.yellow { background: rgba(255, 214, 0, 0.15); color: #ffd600; border: 1px solid rgba(255, 214, 0, 0.3); }
+.pin-badge.green { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid rgba(0, 230, 118, 0.3); }
+.pin-badge.red { background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.3); }
+.pin-badge.gnd { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
